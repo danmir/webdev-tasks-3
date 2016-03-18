@@ -7,18 +7,26 @@ chai.use(sinonChai);
 chai.should();
 var expect = chai.expect;
 
-describe('serial', function() {
-    it('should do calc in correct order', function(done) {
-        var x = 2;
-        flow.serial([
+describe('serial', function () {
+    it('should be serial', function (done) {
+        var func1 = sinon.spy(
             (next) => {
-                next(null, x * 3);
-            },
+                setTimeout(() => {
+                    next(null, 1);
+                }, 200);
+            });
+        var func2 = sinon.spy(
             (x, next) => {
-                next(null, x + 1);
+                setTimeout(() => {
+                    next(null, 2);
+                }, 100);
             }
+        );
+        flow.serial([
+            func1,
+            func2
         ], (err, result) => {
-            result.should.equal(7);
+            func2.should.have.been.calledAfter(func1);
             done();
         })
     });
@@ -57,7 +65,7 @@ describe('serial', function() {
     });
 });
 
-describe('parallel', function() {
+describe('parallel', function () {
     it('should run parallel', function (done) {
         var longRunFunc = function (timeToRun) {
             return (callback) => {
@@ -67,15 +75,15 @@ describe('parallel', function() {
             };
         };
         async.parallel([
-            longRunFunc(200),
-            longRunFunc(100)
-        ], (err, results) => {
-            results[0].should.be.above(results[1]);
-            done();
-        }
+                longRunFunc(200),
+                longRunFunc(100)
+            ], (err, results) => {
+                results[0].should.be.above(results[1]);
+                done();
+            }
         );
     });
-    it('should output an array', function (done) {
+    it('should call result callback without arguments', function (done) {
         async.parallel([], (err, result) => {
             result.should.be.an('array');
             done();
@@ -116,12 +124,12 @@ describe('parallel', function() {
             ],
             (err, results) => {
                 results[0].should.be.eql(1);
-                results[0].should.be.eql(1);
+                results[1].should.be.eql(2);
                 done();
             }
         );
     });
-    it('should all func finished before final cb', function () {
+    it('all func should be finished before final cb', function () {
         var finalCb = sinon.spy();
         var func1 = sinon.spy((next) => {
             next(null, 1);
@@ -135,7 +143,7 @@ describe('parallel', function() {
     });
 });
 
-describe('map', function() {
+describe('map', function () {
     it('should do correct calc', function (done) {
         var values = [1, 2];
         var func = (val, cb) => {
@@ -161,7 +169,7 @@ describe('map', function() {
         };
         flow.map(values, func, finalCb);
     });
-    it('should output an array', function (done) {
+    it('should call final cb even without func args', function (done) {
         var values = [];
         var func = (val, cb) => {
             cb(null, val);
@@ -191,12 +199,13 @@ describe('makeAsync', function () {
         var asyncFunction = flow.makeAsync(syncFunction);
         asyncFunction.should.be.a('function');
     });
-    it('should call callback', function () {
+    it('should call final callback', function () {
         var syncFunction = function (x) {
             return x + 1;
         };
         var asyncFunction = flow.makeAsync(syncFunction);
-        var callback = sinon.spy((err, result) => {});
+        var callback = sinon.spy((err, result) => {
+        });
         asyncFunction(1, callback);
         callback.should.be.called;
     });
@@ -205,13 +214,14 @@ describe('makeAsync', function () {
             throw new Error('5');
         };
         var asyncFunction = flow.makeAsync(syncFunction);
-        var callback = sinon.spy((err, result) => {});
+        var callback = sinon.spy((err, result) => {
+        });
         asyncFunction(1, callback);
         callback.should.be.calledWith(new Error('5'));
     });
 });
 
-describe('parallelLimit', function() {
+describe('parallelLimit', function () {
     it('should run parallel', function (done) {
         var longRunFunc = function (timeToRun) {
             return (callback) => {
@@ -240,9 +250,9 @@ describe('parallelLimit', function() {
             };
         };
         async.parallelLimit([
-            longRunFunc(500),
-            longRunFunc(100)
-        ],
+                longRunFunc(500),
+                longRunFunc(100)
+            ],
             1,
             (err, result) => {
                 // Отработают последовательно
