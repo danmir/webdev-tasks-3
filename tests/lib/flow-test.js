@@ -8,7 +8,7 @@ chai.should();
 var expect = chai.expect;
 
 describe('serial', function () {
-    it('should be serial', function (done) {
+    it('should call second function after first', function (done) {
         var func1 = sinon.spy(
             (next) => {
                 setTimeout(() => {
@@ -34,13 +34,13 @@ describe('serial', function () {
         var x = 3;
         flow.serial([
             (next) => {
-                next(5, x * 3);
+                next('error', x * 3);
             },
             (x, next) => {
                 next(null, x + 1);
             }
         ], (err, result) => {
-            err.should.equal(5);
+            err.should.equal('error');
             result.should.equal(9);
             done();
         })
@@ -88,6 +88,18 @@ describe('parallel', function () {
             result.should.be.an('array');
             done();
         })
+    });
+    it('should run all functions', function () {
+        var finalCb = sinon.spy();
+        var func1 = sinon.spy((next) => {
+            next(new Error('5'), 1);
+        });
+        var func2 = sinon.spy((next) => {
+            next(null, 2);
+        });
+        async.parallel([func1, func2], finalCb);
+        func1.should.be.called;
+        func2.should.be.called;
     });
     it('should run all functions once', function () {
         var finalCb = sinon.spy();
